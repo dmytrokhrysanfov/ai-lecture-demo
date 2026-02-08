@@ -2,10 +2,11 @@ name: Update Issue Status
 
 on:
   pull_request:
-    types: [opened, closed]
+    types: [opened, synchronize, closed]
   push:
     branches:
       - 'BUG-*'
+      - 'FEATURE-*'
 
 jobs:
   update-issue:
@@ -13,7 +14,19 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
+      contents: read
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install @octokit/rest
+
       - name: Extract issue number from branch
         id: extract_issue
         run: |
@@ -23,9 +36,9 @@ jobs:
             BRANCH_NAME="${{ github.ref_name }}"
           fi
           
-          # Extract issue number from branch name (e.g., BUG-1 -> 1)
-          if [[ $BRANCH_NAME =~ ^BUG-([0-9]+)$ ]]; then
-            ISSUE_NUMBER="${BASH_REMATCH[1]}"
+          # Extract issue number from branch name (e.g., BUG-1 -> 1, FEATURE-2 -> 2)
+          if [[ $BRANCH_NAME =~ ^(BUG|FEATURE|TASK|ISSUE)-([0-9]+)$ ]]; then
+            ISSUE_NUMBER="${BASH_REMATCH[2]}"
             echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
             echo "Found issue number: $ISSUE_NUMBER"
           else
@@ -33,70 +46,153 @@ jobs:
             exit 1
           fi
 
-      - name: Add comment to issue
+      - name: Move to In Review (when PR opened)
+        if: steps.extract_issue.outputs.issue_number != '' && github.event_name == 'pull_request' && github.event.action == 'opened'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+        run: |
+          node -e "
+            const { Octokit } = require('@octokit/rest');
+            const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+            
+            const FIND_PROJECT = \`
+              query { repository(owner: \\\"\${{ github.repository_owner }}\\\", name: \\\"\${{ github.event.repository.name }}\\\") {
+                projectsV2(first: 1) { nodes { id title } } }
+              }
+            \`;
+            
+            const GET_COLUMNS = \`
+              query(\$id: ID!) { node(id: \$id) {
+                ... on ProjectV2 { field(name: \\\"Status\\\") {
+                  ... on ProjectV2SingleSelectField { id options { id name } } } }
+              }}
+            \`;
+            
+            const GET_ITEMS = \`
+              query(\$id: ID!) { node(id: \$id) {
+                ... on ProjectV2 { items(first: 50) {
+                  nodes { id content { ... on Issue { number } } } } }
+              }}
+            \`;
+            
+            const UPDATE_ITEM = \`
+              mutation(\$pid: ID!, \$iid: ID!, \$fid: ID!, \$oid: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: \$pid, itemId: \$iid, fieldId: \$fid,
+                  value: { singleSelectOptionId: \$oid }
+                }) { projectV2Item { id } }
+              }
+            \`;
+            
+            (async () => {
+              const project = (await octokit.graphql(FIND_PROJECT)).repository.projectsV2.nodes[0];
+              const columns = await octokit.graphql(GET_COLUMNS, { id: project.id });
+              const items = await octokit.graphql(GET_ITEMS, { id: project.id });
+              const issueItem = items.node.items.nodes.find(i => i.content?.number == '${{ steps.extract_issue.outputs.issue_number }}');
+              const inReviewOpt = columns.node.field.options.find(o => 
+                o.name.toLowerCase().includes('review') || o.name.toLowerCase().includes('peer')
+              );
+              if (issueItem && inReviewOpt) {
+                await octokit.graphql(UPDATE_ITEM, {
+                  pid: project.id, iid: issueItem.id,
+                  fid: columns.node.field.id, oid: inReviewOpt.id
+                });
+                console.log('Moved to In Review');
+              }
+            })();
+          "
+
+      - name: Move to Done (when PR merged)
+        if: steps.extract_issue.outputs.issue_number != '' && github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+        run: |
+          node -e "
+            const { Octokit } = require('@octokit/rest');
+            const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+            
+            const FIND_PROJECT = \`
+              query { repository(owner: \\\"\${{ github.repository_owner }}\\\", name: \\\"\${{ github.event.repository.name }}\\\") {
+                projectsV2(first: 1) { nodes { id title } } }
+              }
+            \`;
+            
+            const GET_COLUMNS = \`
+              query(\$id: ID!) { node(id: \$id) {
+                ... on ProjectV2 { field(name: \\\"Status\\\") {
+                  ... on ProjectV2SingleSelectField { id options { id name } } } }
+              }}
+            \`;
+            
+            const GET_ITEMS = \`
+              query(\$id: ID!) { node(id: \$id) {
+                ... on ProjectV2 { items(first: 50) {
+                  nodes { id content { ... on Issue { number } } } } }
+              }}
+            \`;
+            
+            const UPDATE_ITEM = \`
+              mutation(\$pid: ID!, \$iid: ID!, \$fid: ID!, \$oid: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: \$pid, itemId: \$iid, fieldId: \$fid,
+                  value: { singleSelectOptionId: \$oid }
+                }) { projectV2Item { id } }
+              }
+            \`;
+            
+            (async () => {
+              const project = (await octokit.graphql(FIND_PROJECT)).repository.projectsV2.nodes[0];
+              const columns = await octokit.graphql(GET_COLUMNS, { id: project.id });
+              const items = await octokit.graphql(GET_ITEMS, { id: project.id });
+              const issueItem = items.node.items.nodes.find(i => i.content?.number == '${{ steps.extract_issue.outputs.issue_number }}');
+              const doneOpt = columns.node.field.options.find(o => 
+                o.name.toLowerCase() === 'done' || o.name.toLowerCase().includes('done')
+              );
+              if (issueItem && doneOpt) {
+                await octokit.graphql(UPDATE_ITEM, {
+                  pid: project.id, iid: issueItem.id,
+                  fid: columns.node.field.id, oid: doneOpt.id
+                });
+                console.log('Moved to Done');
+              }
+              
+              // Close the issue
+              await octokit.rest.issues.update({
+                owner: '${{ github.repository_owner }}',
+                repo: '${{ github.event.repository.name }}',
+                issue_number: ${{ steps.extract_issue.outputs.issue_number }},
+                state: 'closed',
+                state_reason: 'completed'
+              });
+              console.log('Issue closed');
+            })();
+          "
+
+      - name: Add comments
         if: steps.extract_issue.outputs.issue_number != ''
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const issueNumber = '${{ steps.extract_issue.outputs.issue_number }}';
-            const branchName = '${{ github.head_ref || github.ref_name }}';
-            const prUrl = '${{ github.event.pull_request.html_url }}';
-            const commitSha = '${{ github.sha }}';
-            
-            let comment = '';
+            const prUrl = '${{ github.event.pull_request?.html_url }}';
             
             if ('${{ github.event_name }}' === 'pull_request' && '${{ github.event.action }}' === 'opened') {
-              comment = `🔧 **Work in Progress**\n\nA pull request has been opened for this issue:\n- Branch: \`${branchName}\`\n- PR: ${prUrl}\n\nThis issue is now being worked on.`;
-            } else if ('${{ github.event_name }}' === 'pull_request' && '${{ github.event.action }}' === 'closed' && '${{ github.event.pull_request.merged }}' === 'true') {
-              comment = `✅ **Fixed**\n\nThis issue has been resolved and merged:\n- PR: ${prUrl}\n- Commit: ${commitSha}\n\nThe fix is now in the main branch.`;
-            } else if ('${{ github.event_name }}' === 'push') {
-              comment = `🚀 **Branch Created**\n\nA branch has been created to fix this issue:\n- Branch: \`${branchName}\`\n- Commit: ${commitSha}\n\nWork on this issue has started.`;
-            }
-            
-            if (comment) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body: comment
+                body: `🔍 **Pull Request Created**\n\nPR opened for review: ${prUrl}\n\nMoved to "In review" for peer review.`
               });
-            }
-
-      - name: Add labels to issue
-        if: steps.extract_issue.outputs.issue_number != '' && github.event_name == 'pull_request' && github.event.action == 'opened'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const issueNumber = '${{ steps.extract_issue.outputs.issue_number }}';
-            
-            // Add "in progress" label if it exists, or create a comment
-            try {
-              await github.rest.issues.addLabels({
+            } else if ('${{ github.event_name }}' === 'pull_request' && '${{ github.event.action }}' === 'closed' && '${{ github.event.pull_request.merged }}' === 'true') {
+              await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                labels: ['in progress']
+                body: `✅ **Resolved**\n\nPR merged: ${prUrl}\n\nIssue resolved and moved to "Done".`
               });
-            } catch (error) {
-              console.log('Label "in progress" may not exist. Skipping label addition.');
             }
-
-      - name: Close issue when PR is merged
-        if: steps.extract_issue.outputs.issue_number != '' && github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const issueNumber = '${{ steps.extract_issue.outputs.issue_number }}';
-            
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber,
-              state: 'closed',
-              state_reason: 'completed'
-            });
-            
-            console.log(`Issue #${issueNumber} has been closed.`);
