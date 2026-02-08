@@ -11,17 +11,22 @@ function RaceTrack({ raceState, onStartRace, onResetRace, isRaceRunning, disable
           <>
             {raceState.participants.map((participant) => {
               const percentage = Math.min((participant.position / finishLineDistance) * 100, 100)
+              // Ensure racer doesn't go beyond track bounds, accounting for name width
+              const maxLeft = 95 // Leave 5% for name visibility
+              const adjustedPercentage = Math.min(percentage, maxLeft)
               return (
                 <div key={participant.id} className="racer-lane">
                   <div
                     className="racer"
                     style={{
-                      left: `${percentage}%`,
+                      left: `${adjustedPercentage}%`,
                       transition: isRaceRunning ? 'left 0.1s linear' : 'none'
                     }}
                   >
                     <span className="racer-icon">{participant.icon}</span>
-                    <span className="racer-name">{participant.name}</span>
+                    <span className="racer-name" title={participant.name} style={{ color: '#333' }}>
+                      {participant.name}
+                    </span>
                   </div>
                 </div>
               )
