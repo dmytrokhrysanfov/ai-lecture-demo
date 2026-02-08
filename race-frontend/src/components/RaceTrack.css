@@ -1,0 +1,131 @@
+.race-track-container {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-height: 400px;
+}
+
+.race-track {
+  position: relative;
+  background: linear-gradient(to bottom, #f0f0f0 0%, #e0e0e0 100%);
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 350px;
+  border: 3px solid #333;
+  overflow: hidden;
+}
+
+.empty-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  font-size: 1.2rem;
+}
+
+.racer-lane {
+  position: relative;
+  height: 60px;
+  margin-bottom: 15px;
+  border-bottom: 2px dashed #ccc;
+}
+
+.racer {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 10;
+}
+
+.racer-icon {
+  font-size: 2rem;
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.racer-name {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.finish-line {
+  position: absolute;
+  right: 20px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #000 0px,
+    #000 20px,
+    #fff 20px,
+    #fff 40px
+  );
+  z-index: 5;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.finish-line::after {
+  content: '🏁';
+  position: absolute;
+  right: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.race-controls {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.start-race-button,
+.reset-race-button {
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.start-race-button {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  box-shadow: 0 4px 6px rgba(40, 167, 69, 0.3);
+}
+
+.start-race-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(40, 167, 69, 0.4);
+}
+
+.start-race-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.reset-race-button {
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+  color: white;
+  box-shadow: 0 4px 6px rgba(255, 193, 7, 0.3);
+}
+
+.reset-race-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 193, 7, 0.4);
+}

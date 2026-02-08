@@ -1,0 +1,87 @@
+.results-table-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.results-table-container h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.results-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.results-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.results-table tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s;
+}
+
+.results-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.results-table tbody tr.winner {
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.05) 100%);
+  font-weight: 600;
+}
+
+.results-table tbody tr.winner:hover {
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%);
+}
+
+.results-table td {
+  padding: 12px;
+}
+
+.place-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.place-emoji {
+  font-size: 1.5rem;
+}
+
+.place-number {
+  font-weight: 700;
+  color: #333;
+}
+
+.icon-cell {
+  text-align: center;
+}
+
+.result-icon {
+  font-size: 1.5rem;
+}
+
+.name-cell {
+  font-weight: 500;
+  color: #333;
+}
+
+.time-cell {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: #667eea;
+}
