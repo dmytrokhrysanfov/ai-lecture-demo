@@ -13,7 +13,8 @@
   padding: 20px;
   min-height: 350px;
   border: 3px solid #333;
-  overflow: hidden;
+  overflow-x: visible;
+  overflow-y: auto;
 }
 
 .empty-track {
@@ -40,6 +41,7 @@
   align-items: center;
   gap: 10px;
   z-index: 10;
+  max-width: calc(100% - 40px);
 }
 
 .racer-icon {
@@ -48,13 +50,22 @@
 }
 
 .racer-name {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #333 !important;
   padding: 5px 12px;
   border-radius: 20px;
   font-weight: 600;
   font-size: 14px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
+  position: relative;
+  z-index: 11;
+  min-width: fit-content;
+  pointer-events: none;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
 }
 
 .finish-line {
