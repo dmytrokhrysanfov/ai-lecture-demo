@@ -133,12 +133,32 @@ public class RaceService
             }
         }
 
+        // Calculate maximum allowed position based on elapsed time to prevent early finishes
+        // No participant should reach the finish line before the race duration ends
+        // Only apply this cap before the rigged threshold to allow the rigged finish to work
+        var maxAllowedPosition = race.FinishLineDistance;
+        if (progress < riggedThreshold)
+        {
+            maxAllowedPosition = (elapsedTime / race.DurationSeconds) * race.FinishLineDistance;
+        }
+
         foreach (var participant in race.Participants)
         {
             if (participant.Position < race.FinishLineDistance)
             {
                 participant.Position += participant.Velocity * deltaTime;
                 
+                // Cap position to ensure no one finishes before the race duration ends
+                // Exception: winner can exceed this during rigged phase
+                if (progress < riggedThreshold || participant.Id != race.WinnerId)
+                {
+                    if (participant.Position > maxAllowedPosition)
+                    {
+                        participant.Position = maxAllowedPosition;
+                    }
+                }
+                
+                // Always cap at finish line distance
                 if (participant.Position > race.FinishLineDistance)
                 {
                     participant.Position = race.FinishLineDistance;
